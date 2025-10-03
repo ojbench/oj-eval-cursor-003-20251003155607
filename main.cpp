@@ -265,8 +265,8 @@ class ICPCSystem {
             target->has_frozen_problem = false;
             for (int i = 0; i < problem_count; ++i) if (target->problems[i].is_frozen) { target->has_frozen_problem = true; break; }
 
-            // Recompute scoreboard after this single unfreeze (spec says after each unfreeze that causes a ranking change, output one line)
-            rebuildVisibleMetrics();
+            // Recompute only the target team's metrics for efficiency
+            computeTeamVisibleMetrics(target);
             // Compute new ordered
             ordered = getOrderedTeamsByBoard();
 
@@ -414,6 +414,26 @@ class ICPCSystem {
     }
 
   private:
+    // Recompute only one team's visible metrics (respecting frozen state)
+    void computeTeamVisibleMetrics(Team* t) {
+        t->solved_count = 0;
+        t->penalty_sum = 0;
+        t->solve_times_sorted_desc.clear();
+        for (int i = 0; i < problem_count; ++i) {
+            const ProblemState &ps = t->problems[i];
+            if (frozen && ps.is_frozen && !ps.solved_before_freeze) {
+                continue; // hidden while frozen
+            }
+            if (ps.first_ac_time != -1) {
+                t->solved_count += 1;
+                int wrong = ps.wrong_before_accept;
+                long long pen = 20LL * wrong + ps.first_ac_time;
+                t->penalty_sum += pen;
+                t->solve_times_sorted_desc.push_back(ps.first_ac_time);
+            }
+        }
+        sort(t->solve_times_sorted_desc.begin(), t->solve_times_sorted_desc.end(), greater<int>());
+    }
     bool started;
     bool frozen;
     int duration_time;
@@ -440,30 +460,7 @@ class ICPCSystem {
 
     void rebuildVisibleMetrics() {
         for (Team* t : getAllRawTeams()) {
-            t->solved_count = 0;
-            t->penalty_sum = 0;
-            t->solve_times_sorted_desc.clear();
-            for (int i = 0; i < problem_count; ++i) {
-                const ProblemState &ps = t->problems[i];
-                // If frozen and this problem is in frozen state due to submissions after freeze while unsolved at freeze,
-                // the scoreboard should show frozen counts and must not apply any solves that occurred after freeze (until unfreeze during scrolling)
-                bool countedSolved = false;
-                if (frozen && ps.is_frozen) {
-                    // Do not count any new solves in frozen problems
-                    countedSolved = false;
-                } else {
-                    if (ps.first_ac_time != -1) {
-                        countedSolved = true;
-                        t->solved_count += 1;
-                        int wrong = ps.wrong_before_accept;
-                        long long pen = 20LL * wrong + ps.first_ac_time;
-                        t->penalty_sum += pen;
-                        t->solve_times_sorted_desc.push_back(ps.first_ac_time);
-                    }
-                }
-                (void)countedSolved;
-            }
-            sort(t->solve_times_sorted_desc.begin(), t->solve_times_sorted_desc.end(), greater<int>());
+            computeTeamVisibleMetrics(t);
         }
     }
 
