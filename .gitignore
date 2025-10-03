@@ -1,0 +1,26 @@
+# Build artifacts
+CMakeFiles/
+CMakeCache.txt
+Makefile
+cmake_install.cmake
+code
+
+# Common C/C++ artifacts
+*.o
+*.obj
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+*.out
+*.log
+
+# CMake extras
+CMakeScripts/
+CMakeUserPresets.json
+CMakePresets.json
+compile_commands.json
+
+# Other
+build/
