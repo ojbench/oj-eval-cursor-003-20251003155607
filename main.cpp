@@ -241,7 +241,7 @@ class ICPCSystem {
             ProblemState &ps = target->problems[chosen_idx];
             bool rankingChanged = false;
 
-            // Before unfreeze, capture original rank position to detect changes
+            // Before unfreeze, capture original rank position to detect changes and replaced team
             auto originalOrdered = ordered; // copy
 
             // Replay
@@ -267,12 +267,17 @@ class ICPCSystem {
 
             // Recompute only the target team's metrics for efficiency
             computeTeamVisibleMetrics(target);
-            // Compute new ordered
-            ordered = getOrderedTeamsByBoard();
+
+            // Reorder by bubbling the target upwards as needed instead of full sort
+            int pos = findPosition(ordered, target);
+            while (pos > 0 && BoardLess()(ordered[pos], ordered[pos - 1])) {
+                swap(ordered[pos], ordered[pos - 1]);
+                pos--;
+            }
 
             // Detect if target moved up (ranking increased)
             int old_pos = findPosition(originalOrdered, target);
-            int new_pos = findPosition(ordered, target);
+            int new_pos = pos;
             if (new_pos < old_pos) {
                 // One or multiple steps up; output the team that previously occupied
                 // the new position before this increase (from the original ordering)
